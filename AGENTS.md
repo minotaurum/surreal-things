@@ -1,6 +1,6 @@
 ## Description
 
-In this repo we have different examples of usages of surreal db. Each example contains a migration.suql, and a set of tests to ensure it works. The tests start a SurrealDB instance in memory, read the migration file and apply it to the db. Then, ensure the use case requirements are covered.
+In this repo we have different examples of usages of surreal db. Each example contains a migration.surql, and a set of tests to ensure it works. The tests start a SurrealDB instance in memory, read the migration file and apply it to the db. Then, ensure the use case requirements are covered.
 
 ## Execution of scripts
 
