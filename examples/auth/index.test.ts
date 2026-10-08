@@ -5,7 +5,7 @@ import { createTestDb } from "../test-helper";
 
 describe("Auth Example - User table & authentication", () => {
   let db: Surreal;
-  const migrationPath = join(import.meta.dir, "migration.suql");
+  const migrationPath = join(import.meta.dir, "migration.surql");
 
   beforeAll(async () => {
     // Initialize in-memory database and apply migration
@@ -206,4 +206,48 @@ describe("Auth Example - User table & authentication", () => {
 
     await client.close();
   });
+
+  test("creates several users, signs in with one, and ensures it cannot list all users in database", async () => {
+    // 1. Create a fresh in-memory database with the auth migration applied
+    const testDb = await createTestDb(migrationPath);
+
+    // 2. Create several users in the database
+    const usersToCreate = [
+      { email: "user_a@example.com", password: "PasswordA123!", name: "User A" },
+      { email: "user_b@example.com", password: "PasswordB123!", name: "User B" },
+      { email: "user_c@example.com", password: "PasswordC123!", name: "User C" },
+    ];
+
+    for (const u of usersToCreate) {
+      await testDb.query(`
+        CREATE user CONTENT {
+          email: '${u.email}',
+          password: crypto::argon2::generate('${u.password}'),
+          name: '${u.name}'
+        };
+      `);
+    }
+
+    // Verify all 3 users exist in the database (as unauthenticated/admin session)
+    const allUsersAdmin = await testDb.query<[{ id: string }[]]>("SELECT * FROM user;");
+    expect(allUsersAdmin[0].length).toBe(3);
+
+    // 3. Sign in as one of the users (User A)
+    await testDb.signin({
+      access: "account",
+      variables: {
+        email: "user_a@example.com",
+        password: "PasswordA123!",
+      },
+    });
+
+    // 4. Ensure User A cannot list all users in the database
+    // Table permissions (FOR select WHERE id = $auth.id) only return User A's record
+    const usersAsUserA = await testDb.query<[{ id: string; email: string }[]]>("SELECT * FROM user;");
+    expect(usersAsUserA[0].length).toBe(1);
+    expect(usersAsUserA[0][0].email).toBe("user_a@example.com");
+
+    await testDb.close();
+  });
 });
+
