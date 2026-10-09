@@ -9,6 +9,7 @@ The example showcases:
 - **Data Validation & Constraints**: Built-in assertions (`string::is_email`) and unique indices.
 - **Password Security**: In-database password hashing and verification using `crypto::argon2::generate()` and `crypto::argon2::compare()`.
 - **Record Access (`DEFINE ACCESS ... TYPE RECORD`)**: Native SurrealDB signup and signin mechanisms providing scoped authentication tokens.
+- **Token Re-authentication & Session Invalidation**: Storing session tokens returned on signin, logging out via session invalidation (`client.invalidate()`), and re-authenticating seamlessly using `client.authenticate(token)`.
 - **Row-Level Security (RLS / Permissions)**: Restricting table access so that authenticated users can only view or modify their own user record (`WHERE id = $auth.id`), preventing unauthorized user enumeration.
 - **Conventions Support**: Supporting standard lowercase (`user`) and PascalCase (`User`) table names.
 
@@ -83,6 +84,10 @@ The test suite validates both the schema rules and the authentication flows agai
    - Seeds multiple users into the database.
    - Signs in as a single user.
    - Asserts that `client.select(new Table("user"))` returns only the signed-in user's record, preventing user enumeration across the database.
+9. **Token Storage, Logout & Re-authentication**:
+   - Signs in with credentials and captures the returned JWT authentication token.
+   - Logs out / invalidates session with `client.invalidate()`, confirming `client.auth()` is cleared.
+   - Re-authenticates using `client.authenticate(token)` without username and password, confirming the user session is restored.
 
 ---
 

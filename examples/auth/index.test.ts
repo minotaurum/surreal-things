@@ -1,7 +1,31 @@
 import { test, expect, beforeAll, afterAll, describe } from "bun:test";
-import { Surreal } from "surrealdb";
+import { Surreal, Table, type RecordId } from "surrealdb";
 import { join } from "node:path";
 import { createTestDb } from "../test-helper";
+
+export type UserId = RecordId<"user">;
+export type UserPascalId = RecordId<"User">;
+
+export interface User {
+  id: UserId;
+  email: string;
+  name: string;
+  password?: string;
+}
+
+export interface UserPascal {
+  id: UserPascalId;
+  email: string;
+  name: string;
+  password?: string;
+}
+
+export interface CreateUserInput {
+  email: string;
+  password: string;
+  name: string;
+  [key: string]: unknown;
+}
 
 describe("Auth Example - User table & authentication", () => {
   let db: Surreal;
@@ -17,31 +41,34 @@ describe("Auth Example - User table & authentication", () => {
   });
 
   test("can create a user with email, password, and name", async () => {
-    const result = await db.query<[{ id: string; email: string; name: string }[]]>(`
-      CREATE user CONTENT {
-        email: 'alice@example.com',
-        password: 'hashed_password_123',
-        name: 'Alice Cooper'
-      };
-    `);
+    const [user] = await db
+      .create<User>(new Table("user"))
+      .content({
+        email: "alice@example.com",
+        password: "hashed_password_123",
+        name: "Alice Cooper",
+      });
 
-    const users = result[0];
-    expect(users).toBeDefined();
-    expect(users.length).toBe(1);
-    expect(users[0].email).toBe("alice@example.com");
-    expect(users[0].name).toBe("Alice Cooper");
+    expect(user).toBeDefined();
+    expect(user?.email).toBe("alice@example.com");
+    expect(user?.name).toBe("Alice Cooper");
+    expect(user?.id).toBeDefined();
+
+    const fetched = await db.select<User>(user!.id);
+    expect(fetched).toBeDefined();
+    expect(fetched?.email).toBe("alice@example.com");
   });
 
   test("enforces unique email constraint (duplicate email fails)", async () => {
     let duplicateFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          email: 'alice@example.com',
-          password: 'another_password',
-          name: 'Alice Imposter'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          email: "alice@example.com",
+          password: "another_password",
+          name: "Alice Imposter",
+        });
     } catch {
       duplicateFailed = true;
     }
@@ -51,13 +78,13 @@ describe("Auth Example - User table & authentication", () => {
   test("enforces valid email format", async () => {
     let invalidEmailFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          email: 'not-a-valid-email',
-          password: 'pwd',
-          name: 'Invalid Email User'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          email: "not-a-valid-email",
+          password: "pwd",
+          name: "Invalid Email User",
+        });
     } catch {
       invalidEmailFailed = true;
     }
@@ -68,12 +95,12 @@ describe("Auth Example - User table & authentication", () => {
     // Missing 'name'
     let missingNameFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          email: 'bob@example.com',
-          password: 'secret_password'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          email: "bob@example.com",
+          password: "secret_password",
+        });
     } catch {
       missingNameFailed = true;
     }
@@ -82,12 +109,12 @@ describe("Auth Example - User table & authentication", () => {
     // Missing 'password'
     let missingPasswordFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          email: 'carol@example.com',
-          name: 'Carol'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          email: "carol@example.com",
+          name: "Carol",
+        });
     } catch {
       missingPasswordFailed = true;
     }
@@ -96,12 +123,12 @@ describe("Auth Example - User table & authentication", () => {
     // Missing 'email'
     let missingEmailFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          password: 'secret_password',
-          name: 'Dave'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          password: "secret_password",
+          name: "Dave",
+        });
     } catch {
       missingEmailFailed = true;
     }
@@ -111,14 +138,14 @@ describe("Auth Example - User table & authentication", () => {
   test("rejects extra fields not in table schema (SCHEMAFULL)", async () => {
     let extraFieldFailed = false;
     try {
-      await db.query(`
-        CREATE user CONTENT {
-          email: 'eve@example.com',
-          password: 'secret_password',
-          name: 'Eve',
-          role: 'admin'
-        };
-      `);
+      await db
+        .create<User>(new Table("user"))
+        .content({
+          email: "eve@example.com",
+          password: "secret_password",
+          name: "Eve",
+          role: "admin",
+        });
     } catch {
       extraFieldFailed = true;
     }
@@ -126,30 +153,28 @@ describe("Auth Example - User table & authentication", () => {
   });
 
   test("supports PascalCase 'User' table shape as requested", async () => {
-    const result = await db.query<[{ id: string; email: string; name: string }[]]>(`
-      CREATE User CONTENT {
-        email: 'user.pascal@example.com',
-        password: 'secure_password',
-        name: 'Pascal User'
-      };
-    `);
+    const [user] = await db
+      .create<UserPascal>(new Table("User"))
+      .content({
+        email: "user.pascal@example.com",
+        password: "secure_password",
+        name: "Pascal User",
+      });
 
-    const users = result[0];
-    expect(users).toBeDefined();
-    expect(users.length).toBe(1);
-    expect(users[0].email).toBe("user.pascal@example.com");
-    expect(users[0].name).toBe("Pascal User");
+    expect(user).toBeDefined();
+    expect(user?.email).toBe("user.pascal@example.com");
+    expect(user?.name).toBe("Pascal User");
 
     // Duplicate email on User table also fails
     let dupFailed = false;
     try {
-      await db.query(`
-        CREATE User CONTENT {
-          email: 'user.pascal@example.com',
-          password: 'diff_password',
-          name: 'Duplicate Pascal'
-        };
-      `);
+      await db
+        .create<UserPascal>(new Table("User"))
+        .content({
+          email: "user.pascal@example.com",
+          password: "diff_password",
+          name: "Duplicate Pascal",
+        });
     } catch {
       dupFailed = true;
     }
@@ -171,12 +196,11 @@ describe("Auth Example - User table & authentication", () => {
 
     expect(signupTokens.access).toBeDefined();
 
-    // Query authenticated record
-    const authRecord = await client.query<[{ id: string; email: string; name: string }[]]>(
-      "SELECT * FROM $auth;"
-    );
-    expect(authRecord[0][0].email).toBe("member@example.com");
-    expect(authRecord[0][0].name).toBe("Member User");
+    // Query authenticated record using client.auth<User>()
+    const authRecord = await client.auth<User>();
+    expect(authRecord).toBeDefined();
+    expect(authRecord?.email).toBe("member@example.com");
+    expect(authRecord?.name).toBe("Member User");
 
     // 2. Client signin with valid credentials
     const signinTokens = await client.signin({
@@ -211,7 +235,7 @@ describe("Auth Example - User table & authentication", () => {
     // 1. Create a fresh in-memory database with the auth migration applied
     const testDb = await createTestDb(migrationPath);
 
-    // 2. Create several users in the database
+    // 2. Create several users in the database using db.query for argon2 hashing on insert
     const usersToCreate = [
       { email: "user_a@example.com", password: "PasswordA123!", name: "User A" },
       { email: "user_b@example.com", password: "PasswordB123!", name: "User B" },
@@ -228,9 +252,9 @@ describe("Auth Example - User table & authentication", () => {
       `);
     }
 
-    // Verify all 3 users exist in the database (as unauthenticated/admin session)
-    const allUsersAdmin = await testDb.query<[{ id: string }[]]>("SELECT * FROM user;");
-    expect(allUsersAdmin[0].length).toBe(3);
+    // Verify all 3 users exist in the database (as unauthenticated/admin session) using db.select(Table)
+    const allUsersAdmin = await testDb.select<User>(new Table("user"));
+    expect(allUsersAdmin.length).toBe(3);
 
     // 3. Sign in as one of the users (User A)
     await testDb.signin({
@@ -241,13 +265,60 @@ describe("Auth Example - User table & authentication", () => {
       },
     });
 
-    // 4. Ensure User A cannot list all users in the database
+    // 4. Ensure User A cannot list all users in database
     // Table permissions (FOR select WHERE id = $auth.id) only return User A's record
-    const usersAsUserA = await testDb.query<[{ id: string; email: string }[]]>("SELECT * FROM user;");
-    expect(usersAsUserA[0].length).toBe(1);
-    expect(usersAsUserA[0][0].email).toBe("user_a@example.com");
+    const usersAsUserA = await testDb.select<User>(new Table("user"));
+    expect(usersAsUserA.length).toBe(1);
+    expect(usersAsUserA[0]?.email).toBe("user_a@example.com");
 
     await testDb.close();
   });
-});
 
+  test("authenticates, stores token, logs out, and signs in again with stored token", async () => {
+    const client = await createTestDb(migrationPath);
+
+    // 1. Create a user
+    await client.signup({
+      access: "account",
+      variables: {
+        email: "token_user@example.com",
+        password: "secure-token-pass-123",
+        name: "Token User",
+      },
+    });
+
+    // 2. Sign in with username and password, and store the token
+    const token = await client.signin({
+      access: "account",
+      variables: {
+        email: "token_user@example.com",
+        password: "secure-token-pass-123",
+      },
+    });
+
+    expect(token).toBeDefined();
+
+    // Verify authenticated user before logout
+    const userBeforeLogout = await client.auth<User>();
+    expect(userBeforeLogout?.email).toBe("token_user@example.com");
+
+    // 3. Log out (invalidate session)
+    await client.invalidate();
+
+    // Verify session is invalidated / logged out
+    const userAfterLogout = await client.auth<User>();
+    expect(userAfterLogout).toBeUndefined();
+
+    // 4. Sign in again using the stored token instead of credentials
+    // SurrealDB SDK supports authenticating using authenticate(token) or signin(token)
+    await client.authenticate(token);
+
+    // Verify authenticated user is restored using the token
+    const userAfterTokenAuth = await client.auth<User>();
+    expect(userAfterTokenAuth).toBeDefined();
+    expect(userAfterTokenAuth?.email).toBe("token_user@example.com");
+    expect(userAfterTokenAuth?.name).toBe("Token User");
+
+    await client.close();
+  });
+});
