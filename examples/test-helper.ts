@@ -24,7 +24,7 @@ export async function createTestDb(
 
   const db = new Surreal({ engines: createWasmEngines() });
   await db.connect("mem://");
-  await db.use({ ns, db: database });
+  await db.use({ namespace: ns, database });
 
   if (options.migrationPath) {
     await applyMigration(db, options.migrationPath);
