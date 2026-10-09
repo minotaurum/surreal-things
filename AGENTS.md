@@ -4,7 +4,13 @@ In this repo we have different examples of usages of surreal db. Each example co
 
 ## Execution of scripts
 
-YOU'RE ONLY ALLOWED TO EXECUTE 'bun test ****', DO NOT EXECUTE OTHER COMMANDS
+
+YOU'RE ONLY ALLOWED TO EXECUTE THE FOLLOWING COMMANDS. DO NOT EXECUTE OTHER COMMANDS
+
+```
+bunx tsc --noEmit
+bun test # and optional path to file
+```
 
 ## About Bun and Node
 
@@ -33,3 +39,8 @@ test("hello world", () => {
   expect(1).toBe(1);
 });
 ```
+
+## SurrealDB Best Practices
+
+- **Prefer SDK methods over `db.query()`**: Whenever possible, use standard SDK methods (`db.create()`, `db.select()`, `db.update()`, `db.merge()`, `db.delete()`, `db.upsert()`, etc.) instead of raw `db.query()`. Keep `db.query()` only for statements not expressible via standard SDK methods (e.g. executing arbitrary multi-statement DDL scripts or specific access evaluations like `$auth`).
+- **Use TypeScript types for fetched data**: Define interfaces/types with `RecordId` (from `surrealdb`) or appropriate entity shapes for input and output data, and pass generic type parameters to the SDK methods (e.g. `db.create<User, CreateUserInput>("user", ...)`, `db.select<User[]>("user")`).
