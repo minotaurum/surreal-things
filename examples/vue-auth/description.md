@@ -8,6 +8,7 @@ Demonstrates an authentication architecture for Vue 3 applications using Surreal
 - **Pinia Token Storage (`useAuthStore`)**: Stores JWT session tokens (`access` and optional `refresh`) and user profile data in a centralized Pinia state store with reactive computed getters (`isAuthenticated`, `accessToken`, `currentUser`).
 - **SurrealDB Record Access**: Uses `DEFINE ACCESS account ON DATABASE TYPE RECORD` with `SIGNUP` (argon2 hashing) and `SIGNIN` (argon2 password comparison) expressions.
 - **Session Restoration (`authenticate`)**: Demonstrates how stored tokens (e.g., hydrated from persistent storage) can seamlessly resume an active SurrealDB database session without re-submitting user credentials.
+- **Guarded DB Access (`getAuthenticatedDb`)**: Exposes the active `Surreal` client instance to other domain services or composables when authenticated, ensuring queries run in the user's `$auth` context under RLS, while throwing if called unauthenticated.
 - **Vue Reactivity Safety**: Storing user profiles with `shallowRef` preserves `RecordId` instances without exposing them to deep `Proxy` wrapping that could break native private fields.
 - **Row-Level Security (RLS)**: Enforces table permissions (`FOR select, update WHERE id = $auth.id`) to guarantee users only read and mutate their own data.
 

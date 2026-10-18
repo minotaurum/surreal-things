@@ -36,16 +36,7 @@ export class AuthService {
     });
 
     this.store.setTokens(tokens);
-
-    try {
-      const user = await this.db.auth<User>();
-      if (user) {
-        this.store.setUser(user);
-      }
-    } catch {
-      // SurrealDB may not return an auth record immediately on certain custom access rules
-    }
-
+    await this.getUser();
     return tokens;
   }
 
@@ -63,16 +54,7 @@ export class AuthService {
     });
 
     this.store.setTokens(tokens);
-
-    try {
-      const user = await this.db.auth<User>();
-      if (user) {
-        this.store.setUser(user);
-      }
-    } catch {
-      // Record access query may be empty if credentials fail before throwing
-    }
-
+    await this.getUser();
     return tokens;
   }
 
@@ -98,23 +80,15 @@ export class AuthService {
       return false;
     }
 
-    await this.db.authenticate(token);
-
-    if (typeof token === "string") {
-      this.store.setTokens({ access: token });
-    } else {
-      this.store.setTokens(token);
-    }
-
     try {
-      const user = await this.db.auth<User>();
-      if (user) {
-        this.store.setUser(user);
-      }
-    } catch {
-      // Ignore if auth record is inaccessible
+      await this.db.authenticate(token);
+    } catch (err) {
+      this.store.clear();
+      throw err;
     }
 
+    this.store.setTokens(typeof token === "string" ? { access: token } : token);
+    await this.getUser();
     return true;
   }
 
@@ -170,5 +144,16 @@ export class AuthService {
 
   get currentUser(): User | null {
     return this.store.currentUser;
+  }
+
+  /**
+   * Returns the active SurrealDB instance if the session is authenticated.
+   * Throws an error if unauthenticated, ensuring callers do not query without user context.
+   */
+  getAuthenticatedDb(): Surreal {
+    if (!this.store.isAuthenticated) {
+      throw new Error("Cannot access authenticated database: user is not authenticated");
+    }
+    return this.db;
   }
 }

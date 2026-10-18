@@ -6,7 +6,6 @@ export interface User {
   id: UserId;
   email: string;
   name: string;
-  password?: string;
 }
 
 export interface SignUpInput {

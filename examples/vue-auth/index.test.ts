@@ -49,6 +49,7 @@ describe("Vue Auth Example - AuthService with Pinia Token Storage", () => {
 
     const fetched = await db.select<User>(store.currentUser!.id);
     expect(fetched?.email).toBe("alice@example.com");
+    expect((fetched as unknown as Record<string, unknown>).password).toBeUndefined();
   });
 
   test("signUp rejects duplicate email and preserves unauthenticated state", async () => {
@@ -123,6 +124,16 @@ describe("Vue Auth Example - AuthService with Pinia Token Storage", () => {
     expect(user?.name).toBe("Eva Green");
   });
 
+  test("authenticate with invalid token throws and clears Pinia store", async () => {
+    store.setTokens({ access: "invalid-token" });
+    expect(store.isAuthenticated).toBe(true);
+
+    await expectThrows(() => authService.authenticate());
+
+    expect(store.tokens).toBeNull();
+    expect(store.isAuthenticated).toBe(false);
+  });
+
   test("updateProfile updates user data in SurrealDB and syncs Pinia store", async () => {
     await authService.signUp({ email: "frank@example.com", password: "frank-password", name: "Frank Sinatra" });
 
@@ -156,5 +167,27 @@ describe("Vue Auth Example - AuthService with Pinia Token Storage", () => {
     expect(usersAsUser2[0]?.email).toBe("user2@example.com");
 
     await client2.close();
+  });
+
+  test("getAuthenticatedDb guards access when unauthenticated and exposes db session when authenticated", async () => {
+    // 1. Throws when not authenticated
+    expect(() => authService.getAuthenticatedDb()).toThrow(
+      "Cannot access authenticated database: user is not authenticated"
+    );
+
+    // 2. Sign in user
+    await authService.signUp({ email: "session@example.com", password: "pwd", name: "Session User" });
+
+    // 3. Exposes the authenticated db instance
+    const authDb = authService.getAuthenticatedDb();
+    expect(authDb).toBe(db);
+
+    // 4. Can query user-scoped data using the authenticated db session
+    const currentUser = await authDb.select<User>(store.currentUser!.id);
+    expect(currentUser?.email).toBe("session@example.com");
+
+    // 5. Throws again after sign out
+    await authService.signOut();
+    expect(() => authService.getAuthenticatedDb()).toThrow();
   });
 });
