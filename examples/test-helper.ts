@@ -40,3 +40,19 @@ export async function applyMigration(db: Surreal, migrationPath: string) {
   const sql = await Bun.file(migrationPath).text();
   return await db.query(sql);
 }
+
+/**
+ * Asserts that an async action throws/rejects.
+ */
+export async function expectThrows(action: () => unknown) {
+  let threw = false;
+  try {
+    await action();
+  } catch {
+    threw = true;
+  }
+  if (!threw) {
+    throw new Error("Expected action to throw, but it succeeded.");
+  }
+}
+

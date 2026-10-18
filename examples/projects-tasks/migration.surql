@@ -44,8 +44,8 @@ DEFINE FIELD created_at ON owns TYPE datetime DEFAULT time::now();
 DEFINE TABLE has_task TYPE RELATION IN project OUT task SCHEMAFULL;
 DEFINE FIELD created_at ON has_task TYPE datetime DEFAULT time::now();
 
--- Cascade delete child tasks when project is deleted
-DEFINE EVENT project_deleted ON project WHEN $event = "DELETE" THEN (
+-- Cascade delete child tasks when project is deleted (via has_task edge)
+DEFINE EVENT project_deleted ON has_task WHEN $event = "DELETE" THEN (
     IF $before.out != NONE THEN
         DELETE $before.out
     END
