@@ -71,10 +71,10 @@ describe("Vue Reactivity & SurrealDB RecordId Example", () => {
       expect(state.pages).toBe(450);
       expect(state.id.toString()).toBe(book!.id.toString());
 
-      const fetched = await db.select<Book>(state.id);
+      const fetched = await db.select<Book>(state.id as BookId);
       expect(fetched?.name).toBe("Refactoring");
 
-      const updated = await db.update<Book>(state.id).merge({ pages: state.pages });
+      const updated = await db.update<Book>(state.id as BookId).merge({ pages: state.pages });
       expect(updated?.pages).toBe(450);
     });
   });
@@ -126,10 +126,10 @@ describe("Vue Reactivity & SurrealDB RecordId Example", () => {
       expect(rawId).toBeInstanceOf(RecordId);
       expect(rawId.toString()).toBe(book!.id.toString());
 
-      const fetched = await db.select<Book>(rawId);
+      const fetched = await db.select<Book>(rawId as BookId);
       expect(fetched?.name).toBe("JS Good Parts");
 
-      const updated = await db.update<Book>(rawId).merge({ pages: 180 });
+      const updated = await db.update<Book>(rawId as BookId).merge({ pages: 180 });
       expect(updated?.pages).toBe(180);
     });
   });
