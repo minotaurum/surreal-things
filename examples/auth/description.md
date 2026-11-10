@@ -6,9 +6,9 @@ Demonstrates user management and authentication in SurrealDB using Record Access
 
 - **Schema enforcement (`SCHEMAFULL`)**: Strict typing, email assertion (`string::is_email`), and unique index on `email`.
 - **In-database password hashing**: `crypto::argon2::generate()` on signup and `crypto::argon2::compare()` on signin.
-- **Record access (`DEFINE ACCESS account ON DATABASE TYPE RECORD`)**: Issues session tokens via `db.signup()` and `db.signin()`.
+- **Record access (`DEFINE ACCESS account ON DATABASE TYPE RECORD ... WITH REFRESH`)**: Issues session tokens via `db.signup()` and `db.signin()`.
 - **Row-Level Security (RLS)**: Permissions `FOR select, update WHERE id = $auth.id` restrict access to own record and prevent user enumeration.
-- **Session management**: Invalidate via `db.invalidate()`, resume via `db.authenticate(token)`.
+- **Session management & token rotation**: Invalidate via `db.invalidate()`, resume via `db.authenticate(tokens)`. Calling `db.authenticate` rotates tokens and returns newly issued ones; the previous token is invalidated and will error if reused. Newly issued tokens must always be stored.
 
 See [migration.surql](./migration.surql) for schema and [index.test.ts](./index.test.ts) for SDK usage and tests.
 

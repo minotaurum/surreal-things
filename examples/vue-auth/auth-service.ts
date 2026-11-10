@@ -72,7 +72,7 @@ export class AuthService {
 
   /**
    * Restores an active session using an existing token or the token currently
-   * stored in Pinia. Useful on application bootstrap or page refresh.
+   * stored in Pinia. Stores newly issued tokens in Pinia on success.
    */
   async authenticate(tokenOrTokens?: Token | Tokens): Promise<boolean> {
     const token = tokenOrTokens ?? this.store.tokens;
@@ -80,14 +80,15 @@ export class AuthService {
       return false;
     }
 
+    let tokens: Tokens;
     try {
-      await this.db.authenticate(token);
+      tokens = await this.db.authenticate(token);
     } catch (err) {
       this.store.clear();
       throw err;
     }
 
-    this.store.setTokens(typeof token === "string" ? { access: token } : token);
+    this.store.setTokens(tokens);
     await this.getUser();
     return true;
   }

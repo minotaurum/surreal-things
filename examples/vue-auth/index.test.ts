@@ -106,7 +106,7 @@ describe("Vue Auth Example - AuthService with Pinia Token Storage", () => {
     expect(await authService.getUser()).toBeUndefined();
   });
 
-  test("authenticate restores session from Pinia tokens on app reload", async () => {
+  test("authenticate restores session, stores newly issued tokens, and rejects old token reuse", async () => {
     const initialTokens = await authService.signUp({
       email: "eva@example.com",
       password: "eva-secure-password",
@@ -119,9 +119,23 @@ describe("Vue Auth Example - AuthService with Pinia Token Storage", () => {
     const restored = await authService.authenticate();
     expect(restored).toBe(true);
 
+    // Newly issued tokens are stored in Pinia
+    const updatedTokens = store.tokens;
+    expect(updatedTokens).toBeDefined();
+    expect(updatedTokens?.refresh).not.toBe(initialTokens.refresh);
+
     const user = await authService.getUser();
     expect(user?.email).toBe("eva@example.com");
     expect(user?.name).toBe("Eva Green");
+
+    await db.invalidate();
+
+    // Reusing the old token on subsequent authenticate calls must fail
+    await expectThrows(() => authService.authenticate(initialTokens));
+
+    // Stored new tokens continue to authenticate successfully
+    const reauthenticated = await authService.authenticate(updatedTokens!);
+    expect(reauthenticated).toBe(true);
   });
 
   test("authenticate with invalid token throws and clears Pinia store", async () => {

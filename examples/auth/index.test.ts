@@ -104,6 +104,7 @@ describe("Auth Example - User table & authentication", () => {
       variables: { email: "member@example.com", password: "my-secret-password-123", name: "Member User" },
     });
     expect(signupTokens.access).toBeDefined();
+    expect(signupTokens.refresh).toBeDefined();
 
     const authRecord = await client.auth<User>();
     expect(authRecord?.email).toBe("member@example.com");
@@ -114,6 +115,7 @@ describe("Auth Example - User table & authentication", () => {
       variables: { email: "member@example.com", password: "my-secret-password-123" },
     });
     expect(signinTokens.access).toBeDefined();
+    expect(signinTokens.refresh).toBeDefined();
 
     await expectThrows(() =>
       client.signin({
@@ -159,11 +161,12 @@ describe("Auth Example - User table & authentication", () => {
       variables: { email: "token_user@example.com", password: "secure-token-pass-123", name: "Token User" },
     });
 
-    const token = await client.signin({
+    const initialTokens = await client.signin({
       access: "account",
       variables: { email: "token_user@example.com", password: "secure-token-pass-123" },
     });
-    expect(token).toBeDefined();
+    expect(initialTokens.access).toBeDefined();
+    expect(initialTokens.refresh).toBeDefined();
 
     const userBeforeLogout = await client.auth<User>();
     expect(userBeforeLogout?.email).toBe("token_user@example.com");
@@ -172,10 +175,25 @@ describe("Auth Example - User table & authentication", () => {
     const userAfterLogout = await client.auth<User>().catch(() => undefined);
     expect(userAfterLogout).toBeUndefined();
 
-    await client.authenticate(token);
+    // Authenticate issues new tokens and revokes previous tokens
+    const newTokens = await client.authenticate(initialTokens);
+    expect(newTokens.access).toBeDefined();
+    expect(newTokens.refresh).toBeDefined();
+    expect(newTokens.refresh).not.toBe(initialTokens.refresh);
+
     const userAfterTokenAuth = await client.auth<User>();
     expect(userAfterTokenAuth?.email).toBe("token_user@example.com");
     expect(userAfterTokenAuth?.name).toBe("Token User");
+
+    await client.invalidate();
+
+    // Reusing the old token on subsequent authenticate calls must fail
+    await expectThrows(() => client.authenticate(initialTokens));
+
+    // Storing and using the newly issued tokens succeeds
+    await client.authenticate(newTokens);
+    const userAfterStoredTokenAuth = await client.auth<User>();
+    expect(userAfterStoredTokenAuth?.email).toBe("token_user@example.com");
 
     await client.close();
   });

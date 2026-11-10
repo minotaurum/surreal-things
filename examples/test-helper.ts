@@ -1,4 +1,4 @@
-import { Surreal } from "surrealdb";
+import { Surreal, Features } from "surrealdb";
 import { createWasmEngines } from "@surrealdb/wasm";
 
 export interface CreateTestDbOptions {
@@ -22,7 +22,17 @@ export async function createTestDb(
   const ns = options.ns ?? "test";
   const database = options.db ?? "test";
 
-  const db = new Surreal({ engines: createWasmEngines() });
+  const wasmEngines = createWasmEngines();
+  const db = new Surreal({
+    engines: {
+      ...wasmEngines,
+      mem: (ctx) => {
+        const engine = wasmEngines.mem!(ctx);
+        engine.features.add(Features.RefreshTokens);
+        return engine;
+      },
+    },
+  });
   await db.connect("mem://");
   await db.use({ namespace: ns, database });
 
